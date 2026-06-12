@@ -8,6 +8,8 @@ using System.Text.Json;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
+// Controlador de compatibilidad: Guarda la configuración de Finanzas del Administrador,
+// como el gasto base mensual y el porcentaje de mora aplicable.
 [ApiController]
 [Route("financeSettings")]
 public class FinanceSettingsCompatController(

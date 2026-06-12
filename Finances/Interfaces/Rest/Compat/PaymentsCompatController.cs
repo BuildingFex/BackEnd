@@ -8,6 +8,8 @@ using System.Text.Json;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
+// Controlador de compatibilidad: Registra y lista los pagos realizados por los residentes.
+// Integra el formato necesario para el módulo de pagos.
 [ApiController]
 [Route("payments")]
 public class PaymentsCompatController(
