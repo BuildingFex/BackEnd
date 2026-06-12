@@ -8,6 +8,8 @@ using System.Text.Json;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
+// Controlador de compatibilidad: Provee en tiempo real las métricas financieras
+// para el Dashboard principal del Administrador (Ingresos, Deudas, Unidades, etc).
 [ApiController]
 [Route("kpi")]
 public class KpiCompatController(

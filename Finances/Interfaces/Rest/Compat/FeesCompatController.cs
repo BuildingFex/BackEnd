@@ -6,6 +6,7 @@ using System.Text.Json;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
+// Controlador de compatibilidad: Maneja las cuotas de mantenimiento de los residentes.
 [ApiController]
 [Route("fees")]
 public class FeesCompatController(

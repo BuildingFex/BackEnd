@@ -8,6 +8,8 @@ using System.Text.Json;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
+// Controlador de compatibilidad: Gestiona la creación, listado y actualización
+// de los recibos de los residentes. Utilizado por la vista de Finanzas del Administrador.
 [ApiController]
 [Route("receipts")]
 public class ReceiptsCompatController(
