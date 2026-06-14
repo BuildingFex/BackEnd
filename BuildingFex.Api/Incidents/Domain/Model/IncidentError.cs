@@ -5,4 +5,9 @@ public enum IncidentError
     IncidentNotFound,
     OwnerAdminRequired,
     DescriptionRequired,
+    InvalidStatus,
+    ResidentRequired,
+    ProviderRequired
+
+
 }

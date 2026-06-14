@@ -84,6 +84,9 @@ public class IncidentsCompatController(
             IncidentError.IncidentNotFound => "INCIDENT_NOT_FOUND",
             IncidentError.OwnerAdminRequired => "OWNER_ADMIN_REQUIRED",
             IncidentError.DescriptionRequired => "DESCRIPTION_REQUIRED",
+            IncidentError.InvalidStatus => "INVALID_STATUS",
+            IncidentError.ResidentRequired => "RESIDENT_REQUIRED",
+            IncidentError.ProviderRequired => "PROVIDER_REQUIRED",
             _ => "INCIDENT_ERROR",
         };
 }

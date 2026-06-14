@@ -6,13 +6,15 @@ using BuildingFex.Api.Incidents.Domain.Model.Commands;
 using BuildingFex.Api.Incidents.Domain.Repositories;
 using BuildingFex.Api.Shared.Application.Model;
 using BuildingFex.Api.Shared.Domain.Repositories;
-
 namespace BuildingFex.Api.Incidents.Application.Internal.CommandServices;
+
 
 public class IncidentCommandService(
     IIncidentRepository incidentRepository,
-    IUserRepository userRepository,
+    IUserRepository userRepository, 
     IUnitOfWork unitOfWork) : IIncidentCommandService
+
+        
 {
     public async Task<Result<Incident>> Handle(
         CreateIncidentCommand command,
@@ -36,6 +38,7 @@ public class IncidentCommandService(
         var externalId = string.IsNullOrWhiteSpace(command.ExternalId)
             ? $"incident-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
             : command.ExternalId.Trim();
+        
 
         var incident = Incident.Create(
             externalId,
@@ -49,6 +52,7 @@ public class IncidentCommandService(
 
         await incidentRepository.AddAsync(incident, cancellationToken);
         await unitOfWork.CompleteAsync(cancellationToken);
+        
 
         var created = await incidentRepository.FindByExternalIdAsync(externalId, cancellationToken);
         return Result<Incident>.Success(created!);
@@ -93,3 +97,6 @@ public class IncidentCommandService(
         return Result<Incident>.Success(incident);
     }
 }
+
+
+

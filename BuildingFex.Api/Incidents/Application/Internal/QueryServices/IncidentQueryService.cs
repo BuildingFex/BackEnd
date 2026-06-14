@@ -13,13 +13,29 @@ public class IncidentQueryService(
         string? ownerAdminExternalId,
         CancellationToken cancellationToken = default)
     {
+        IEnumerable<Incident> incidents;
         if (string.IsNullOrWhiteSpace(ownerAdminExternalId))
+        {
             return await incidentRepository.ListAsync(cancellationToken);
+        }  else
+        {
+            var owner = await userRepository.FindByExternalIdAsync(ownerAdminExternalId, cancellationToken);
+            if (owner is null) return [];
+            incidents = await incidentRepository.ListByOwnerAdminIdAsync(owner.Id, cancellationToken);
+        }
+        incidents = incidents.Where(i => i.Status == "open");
 
-        var owner = await userRepository.FindByExternalIdAsync(ownerAdminExternalId, cancellationToken);
-        if (owner is null)
-            return [];
+        // 🔹 Ejemplo de mejora: ordenar por fecha de reporte
+        incidents = incidents.OrderByDescending(i => i.ReportedAt);
 
-        return await incidentRepository.ListByOwnerAdminIdAsync(owner.Id, cancellationToken);
+        return incidents;
+            
+
+       
+
+        
     }
+
+    
+
 }
