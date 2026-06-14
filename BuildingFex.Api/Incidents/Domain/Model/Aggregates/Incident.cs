@@ -23,6 +23,8 @@ public class Incident : IAuditableEntity
     }
 
     public static Incident Create(
+        
+
         string externalId,
         int ownerAdminId,
         string description,
@@ -30,8 +32,13 @@ public class Incident : IAuditableEntity
         string? residentExternalId = null,
         string? residentName = null,
         string? provider = null,
-        DateTimeOffset? reportedAt = null)
+        DateTimeOffset? reportedAt = null
+        )
+    
     {
+        var validStatuses = new[] { "open", "in_progress", "closed" };
+        if (!validStatuses.Contains(status))
+            throw new ArgumentException("Estado inválido", nameof(status));
         return new Incident
         {
             ExternalId = externalId.Trim(),
@@ -52,6 +59,12 @@ public class Incident : IAuditableEntity
         string? residentExternalId = null,
         string? residentName = null)
     {
+        if (description.Length < 10)
+            throw new ArgumentException("La descripción debe tener al menos 10 caracteres.", nameof(description));
+
+        var validStatuses = new[] { "open", "in_progress", "closed" };
+        if (!string.IsNullOrWhiteSpace(status) && !validStatuses.Contains(status))
+            throw new ArgumentException("Estado inválido", nameof(status));
         Description = description.Trim();
         Status = string.IsNullOrWhiteSpace(status) ? Status : status.Trim();
         Provider = provider;
@@ -60,6 +73,9 @@ public class Incident : IAuditableEntity
             ResidentExternalId = string.IsNullOrWhiteSpace(residentExternalId) ? null : residentExternalId.Trim();
 
         if (residentName is not null)
+            
             ResidentName = residentName.Trim();
+
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 }
