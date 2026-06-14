@@ -1,6 +1,7 @@
 using BuildingFex.Api.Finances.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using BuildingFex.Api.Iam.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using BuildingFex.Api.Incidents.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
+using BuildingFex.Api.Information.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using BuildingFex.Api.SocialSpaces.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         builder.ApplyIncidentsConfiguration();
         builder.ApplyFinancesConfiguration();
         builder.ApplySocialSpacesConfiguration();
+        builder.ApplyInformationConfiguration();
         // ...
 
         builder.UseSnakeCaseNamingConvention();
