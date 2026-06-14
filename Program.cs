@@ -21,6 +21,13 @@ using BuildingFex.Api.Finances.Domain.Repositories;
 using BuildingFex.Api.Finances.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using BuildingFex.Api.Finances.Infrastructure.Persistence.Seeding;
 using BuildingFex.Api.Incidents.Infrastructure.Persistence.Seeding;
+using BuildingFex.Api.Information.Application.CommandServices;
+using BuildingFex.Api.Information.Application.Internal.CommandServices;
+using BuildingFex.Api.Information.Application.Internal.QueryServices;
+using BuildingFex.Api.Information.Application.QueryServices;
+using BuildingFex.Api.Information.Domain.Repositories;
+using BuildingFex.Api.Information.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using BuildingFex.Api.Information.Infrastructure.Persistence.Seeding;
 using BuildingFex.Api.SocialSpaces.Application.Internal;
 using BuildingFex.Api.SocialSpaces.Domain.Repositories;
 using BuildingFex.Api.SocialSpaces.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
@@ -135,6 +142,12 @@ builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<SocialSpacesOwnerResolver>();
 builder.Services.AddScoped<DbJsonSocialSpacesSeeder>();
 
+// Information
+builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
+builder.Services.AddScoped<IAnnouncementCommandService, AnnouncementCommandService>();
+builder.Services.AddScoped<IAnnouncementQueryService, AnnouncementQueryService>();
+builder.Services.AddScoped<DbJsonAnnouncementSeeder>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -163,6 +176,9 @@ using (var scope = app.Services.CreateScope())
 
             var socialSpacesSeeder = scope.ServiceProvider.GetRequiredService<DbJsonSocialSpacesSeeder>();
             await socialSpacesSeeder.SeedAsync(seedPath);
+
+            var announcementSeeder = scope.ServiceProvider.GetRequiredService<DbJsonAnnouncementSeeder>();
+            await announcementSeeder.SeedAsync(seedPath);
         }
     }
     catch (Exception ex)
