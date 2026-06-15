@@ -32,4 +32,12 @@ public class FinanceSetting : IAuditableEntity, IOwnerScopedFinanceEntity
             LateFeeRate = lateFeeRate,
         };
     }
+
+    public void Patch(decimal? baseMonthlyExpense, decimal? lateFeeRate)
+    {
+        if (baseMonthlyExpense.HasValue)
+            BaseMonthlyExpense = baseMonthlyExpense.Value;
+        if (lateFeeRate.HasValue)
+            LateFeeRate = lateFeeRate.Value;
+    }
 }

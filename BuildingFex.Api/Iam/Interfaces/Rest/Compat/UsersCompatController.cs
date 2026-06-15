@@ -39,10 +39,33 @@ public class UsersCompatController(
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserCompatResource resource, CancellationToken ct)
     {
-        if (!string.Equals(resource.Role, "resident", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { code = "UNSUPPORTED_ROLE", message = "Solo se admite role=resident en POST /users." });
+        if (string.Equals(resource.Role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = await userCommandService.Handle(
+                new RegisterAdminCommand(
+                    resource.Name ?? string.Empty,
+                    resource.Email ?? string.Empty,
+                    resource.Password ?? string.Empty,
+                    resource.Dni,
+                    resource.Address,
+                    resource.Company,
+                    resource.Ruc),
+                ct);
 
-        var result = await userCommandService.Handle(
+            if (result.IsFailure)
+                return BadRequest(new { code = MapErrorCode(result.Error), message = result.Message });
+
+            return StatusCode(StatusCodes.Status201Created, new
+            {
+                user = UserResourceAssembler.ToResource(result.Value.user),
+                token = result.Value.token,
+            });
+        }
+
+        if (!string.Equals(resource.Role, "resident", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { code = "UNSUPPORTED_ROLE", message = "Role must be 'resident' or 'admin'." });
+
+        var createResult = await userCommandService.Handle(
             new CreateResidentCommand(
                 resource.Id ?? string.Empty,
                 resource.Name ?? string.Empty,
@@ -52,10 +75,10 @@ public class UsersCompatController(
                 resource.AdmissionDate),
             ct);
 
-        if (result.IsFailure)
-            return BadRequest(new { code = MapErrorCode(result.Error), message = result.Message });
+        if (createResult.IsFailure)
+            return BadRequest(new { code = MapErrorCode(createResult.Error), message = createResult.Message });
 
-        return StatusCode(StatusCodes.Status201Created, UserResourceAssembler.ToResource(result.Value!));
+        return StatusCode(StatusCodes.Status201Created, UserResourceAssembler.ToResource(createResult.Value!));
     }
 
     [HttpPatch("{id}")]

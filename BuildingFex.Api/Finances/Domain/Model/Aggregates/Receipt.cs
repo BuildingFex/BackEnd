@@ -58,4 +58,9 @@ public class Receipt : IAuditableEntity, IOwnerScopedFinanceEntity
         if (concept is not null)
             Concept = concept;
     }
+
+    public void MarkAsPaid()
+    {
+        Status = "Paid";
+    }
 }

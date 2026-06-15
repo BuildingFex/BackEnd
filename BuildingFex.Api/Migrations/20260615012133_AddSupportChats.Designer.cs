@@ -3,6 +3,7 @@ using System;
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BuildingFex.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615012133_AddSupportChats")]
+    partial class AddSupportChats
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -646,60 +649,6 @@ namespace BuildingFex.Api.Migrations
                     b.ToTable("users");
                 });
 
-            modelBuilder.Entity("BuildingFex.Api.Import.Domain.Model.Aggregates.ImportUpload", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<string>("DataUrl")
-                        .IsRequired()
-                        .HasColumnType("LONGTEXT")
-                        .HasColumnName("data_url");
-
-                    b.Property<string>("ExternalId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)")
-                        .HasColumnName("external_id");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("varchar(512)")
-                        .HasColumnName("file_name");
-
-                    b.Property<string>("MimeType")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)")
-                        .HasColumnName("mime_type");
-
-                    b.Property<string>("OwnerAdminId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)")
-                        .HasColumnName("owner_admin_id");
-
-                    b.Property<long>("Size")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size");
-
-                    b.Property<DateTimeOffset>("UploadedAt")
-                        .HasColumnType("datetime")
-                        .HasColumnName("uploaded_at");
-
-                    b.HasKey("Id")
-                        .HasName("p_k_import_uploads");
-
-                    b.HasIndex("ExternalId")
-                        .IsUnique()
-                        .HasDatabaseName("i_x_import_uploads_external_id");
-
-                    b.ToTable("import_uploads");
-                });
-
             modelBuilder.Entity("BuildingFex.Api.Incidents.Domain.Model.Aggregates.Incident", b =>
                 {
                     b.Property<int>("Id")
@@ -1056,67 +1005,6 @@ namespace BuildingFex.Api.Migrations
                         .HasDatabaseName("i_x_support_chats_external_id");
 
                     b.ToTable("support_chats");
-                });
-
-            modelBuilder.Entity("BuildingFex.Api.Team.Domain.Model.Aggregates.TeamWorker", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetime")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Dni")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("dni");
-
-                    b.Property<string>("ExternalId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)")
-                        .HasColumnName("external_id");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("OwnerAdminId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)")
-                        .HasColumnName("owner_admin_id");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("phone");
-
-                    b.Property<string>("PhotoUrl")
-                        .IsRequired()
-                        .HasColumnType("LONGTEXT")
-                        .HasColumnName("photo_url");
-
-                    b.Property<decimal>("Salary")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("salary");
-
-                    b.HasKey("Id")
-                        .HasName("p_k_team_workers");
-
-                    b.HasIndex("ExternalId")
-                        .IsUnique()
-                        .HasDatabaseName("i_x_team_workers_external_id");
-
-                    b.ToTable("team_workers");
                 });
 
             modelBuilder.Entity("BuildingFex.Api.Finances.Domain.Model.Aggregates.AdminManagementExpense", b =>
