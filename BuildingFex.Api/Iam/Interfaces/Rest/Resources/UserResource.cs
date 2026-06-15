@@ -37,6 +37,10 @@ public record CreateUserCompatResource(
     string? Password,
     string? Role,
     string? AdmissionDate,
-    string? OwnerAdminId);
+    string? OwnerAdminId,
+    string? Dni = null,
+    string? Address = null,
+    string? Company = null,
+    string? Ruc = null);
 
 public record UpdateResidentCredentialsResource(string? Email, string? Password);

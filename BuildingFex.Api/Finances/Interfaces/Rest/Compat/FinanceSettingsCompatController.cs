@@ -49,4 +49,30 @@ public class FinanceSettingsCompatController(
         var created = await settingRepository.FindByExternalIdAsync(externalId, ct);
         return StatusCode(StatusCodes.Status201Created, FinanceCompatSerializer.FinanceSettingToJson(created!));
     }
+
+    [HttpPatch]
+    public async Task<IActionResult> Update([FromQuery] string? ownerAdminId, [FromBody] JsonElement body, CancellationToken ct)
+    {
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(ownerAdminId, ct);
+        if (owner is null)
+            return BadRequest(new { code = "OWNER_ADMIN_REQUIRED", message = "ownerAdminId es obligatorio." });
+
+        var settings = await settingRepository.ListAsync(ownerAdminId, ct);
+        var setting = settings.FirstOrDefault();
+        if (setting is null)
+            return NotFound(new { code = "SETTINGS_NOT_FOUND", message = "Finance settings not found." });
+
+        decimal? baseMonthlyExpense = body.TryGetProperty("baseMonthlyExpense", out var baseProp)
+            ? baseProp.GetDecimal()
+            : null;
+        decimal? lateFeeRate = body.TryGetProperty("lateFeeRate", out var rateProp)
+            ? rateProp.GetDecimal()
+            : null;
+
+        setting.Patch(baseMonthlyExpense, lateFeeRate);
+        settingRepository.Update(setting);
+        await unitOfWork.CompleteAsync(ct);
+
+        return Ok(FinanceCompatSerializer.FinanceSettingToJson(setting));
+    }
 }

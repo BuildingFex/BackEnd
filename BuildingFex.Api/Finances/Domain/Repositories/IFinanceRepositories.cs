@@ -33,6 +33,7 @@ public interface IFinanceSettingRepository
     Task<FinanceSetting?> FindByExternalIdAsync(string externalId, CancellationToken cancellationToken = default);
     Task<IEnumerable<FinanceSetting>> ListAsync(string? ownerAdminExternalId, CancellationToken cancellationToken = default);
     Task AddAsync(FinanceSetting entity, CancellationToken cancellationToken = default);
+    void Update(FinanceSetting entity);
     Task<bool> AnyAsync(CancellationToken cancellationToken = default);
 }
 

@@ -1,5 +1,6 @@
 using BuildingFex.Api.Iam.Domain.Model.Aggregates;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BuildingFex.Api.Iam.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 
@@ -7,6 +8,10 @@ public static class ModelBuilderExtensions
 {
     public static void ApplyIamConfiguration(this ModelBuilder builder)
     {
+        var dateOnlyConverter = new ValueConverter<DateOnly?, DateTime?>(
+            v => v.HasValue ? v.Value.ToDateTime(TimeOnly.MinValue) : null,
+            v => v.HasValue ? DateOnly.FromDateTime(v.Value) : null);
+
         builder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.Id);
@@ -22,6 +27,7 @@ public static class ModelBuilderExtensions
             entity.Property(u => u.Ruc).HasMaxLength(20);
             entity.Property(u => u.Floor).HasMaxLength(10);
             entity.Property(u => u.Code).HasMaxLength(20);
+            entity.Property(u => u.AdmissionDate).HasConversion(dateOnlyConverter);
 
             entity.HasOne(u => u.OwnerAdmin)
                 .WithMany()

@@ -15,6 +15,8 @@ using BuildingFex.Api.Incidents.Application.QueryServices;
 using BuildingFex.Api.Incidents.Domain.Repositories;
 using BuildingFex.Api.Incidents.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using BuildingFex.Api.Finances.Application.Internal;
+using BuildingFex.Api.Finances.Application.Internal.Dashboard;
+using BuildingFex.Api.Finances.Application.Internal.MercadoPago;
 using BuildingFex.Api.Finances.Domain.Repositories;
 using BuildingFex.Api.Finances.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using BuildingFex.Api.Finances.Infrastructure.Persistence.Seeding;
@@ -125,6 +127,9 @@ builder.Services.AddScoped<IAdminManagementExpenseRepository, AdminManagementExp
 builder.Services.AddScoped<ISharedUtilityServiceRepository, SharedUtilityServiceRepository>();
 builder.Services.AddScoped<IFixedPayoutRecipientRepository, FixedPayoutRecipientRepository>();
 builder.Services.AddScoped<FinanceOwnerResolver>();
+builder.Services.AddScoped<IDashboardQueryService, DashboardQueryService>();
+builder.Services.Configure<MercadoPagoSettings>(builder.Configuration.GetSection("MercadoPago"));
+builder.Services.AddScoped<IMercadoPagoService, MercadoPagoService>();
 builder.Services.AddScoped<DbJsonFinanceSeeder>();
 
 // SocialSpaces
