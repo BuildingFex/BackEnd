@@ -11,6 +11,11 @@ public class DbJsonUserSeeder(
     IUnitOfWork unitOfWork,
     ILogger<DbJsonUserSeeder> logger)
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
     public async Task SeedAsync(string dbJsonPath, CancellationToken cancellationToken = default)
     {
         if (await userRepository.AnyUsersAsync(cancellationToken))
@@ -36,12 +41,13 @@ public class DbJsonUserSeeder(
         }
 
         var entries = usersElement.EnumerateArray()
-            .Select(e => JsonSerializer.Deserialize<DbJsonUser>(e.GetRawText()))
+            .Select(e => JsonSerializer.Deserialize<DbJsonUser>(e.GetRawText(), JsonOptions))
             .Where(u => u is not null)
             .Cast<DbJsonUser>()
             .ToList();
 
         var externalIdToInternalId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var seededCount = 0;
 
         foreach (var entry in entries.Where(u => u.Role == "admin"))
         {
@@ -58,6 +64,7 @@ public class DbJsonUserSeeder(
             await userRepository.AddAsync(user, cancellationToken);
             await unitOfWork.CompleteAsync(cancellationToken);
             externalIdToInternalId[entry.Id] = user.Id;
+            seededCount++;
         }
 
         foreach (var entry in entries.Where(u => u.Role == "resident"))
@@ -89,9 +96,10 @@ public class DbJsonUserSeeder(
 
             await userRepository.AddAsync(user, cancellationToken);
             await unitOfWork.CompleteAsync(cancellationToken);
+            seededCount++;
         }
 
-        logger.LogInformation("Seeded {Count} users from {Path}.", entries.Count, dbJsonPath);
+        logger.LogInformation("Seeded {Count} users from {Path}.", seededCount, dbJsonPath);
     }
 
     private string HashOrEmpty(string? password) =>

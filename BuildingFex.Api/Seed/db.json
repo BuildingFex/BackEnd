@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": "admin-seed-1",
+      "name": "Admin BuildingFex",
+      "email": "admin@buildingfex.test",
+      "password": "admin123",
+      "role": "admin",
+      "dni": "12345678",
+      "address": "Av. Principal 123",
+      "company": "BuildingFex SAC",
+      "ruc": "20123456789"
+    }
+  ],
+  "incidents": [],
+  "payments": [],
+  "feeSchedules": [],
+  "receipts": [],
+  "spaces": [],
+  "reservations": [],
+  "announcements": []
+}
