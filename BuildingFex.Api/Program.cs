@@ -47,6 +47,7 @@ using Microsoft.OpenApi;
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 RailwayHosting.ConfigureKestrelPort(builder);
+RailwayHosting.ApplySecretsFromEnvironment(builder);
 RailwayHosting.ValidateProductionSecrets(builder.Configuration, builder.Environment);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>

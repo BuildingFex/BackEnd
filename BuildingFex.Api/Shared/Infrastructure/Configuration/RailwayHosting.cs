@@ -24,6 +24,17 @@ public static class RailwayHosting
             "Database connection is not configured. Set ConnectionStrings__DefaultConnection or Railway MySQL variables.");
     }
 
+    public static void ApplySecretsFromEnvironment(WebApplicationBuilder builder)
+    {
+        var secret = FirstEnv(
+            "TokenSettings__Secret",
+            "JWT_SECRET",
+            "TOKEN_SETTINGS_SECRET");
+
+        if (!string.IsNullOrWhiteSpace(secret))
+            builder.Configuration["TokenSettings:Secret"] = secret;
+    }
+
     public static void ValidateProductionSecrets(IConfiguration configuration, IHostEnvironment environment)
     {
         if (environment.IsDevelopment())
@@ -35,7 +46,8 @@ public static class RailwayHosting
             secret.Length < 32)
         {
             throw new InvalidOperationException(
-                "Set TokenSettings__Secret to a secure value (at least 32 characters) in production.");
+                "Missing JWT secret for production. In Railway → your API service → Variables, add " +
+                "TokenSettings__Secret (or JWT_SECRET) with a random string of at least 32 characters, then redeploy.");
         }
     }
 
