@@ -34,16 +34,25 @@ using BuildingFex.Api.SocialSpaces.Infrastructure.Persistence.EntityFrameworkCor
 using BuildingFex.Api.SocialSpaces.Infrastructure.Persistence.Seeding;
 using BuildingFex.Api.Iam.Infrastructure.Tokens.Jwt.Configuration;
 using BuildingFex.Api.Iam.Infrastructure.Tokens.Jwt.Services;
+using BuildingFex.Api.Shared.Infrastructure.Configuration;
 using BuildingFex.Api.Shared.Domain.Repositories;
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+RailwayHosting.ConfigureKestrelPort(builder);
+RailwayHosting.ValidateProductionSecrets(builder.Configuration, builder.Environment);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddControllers();
@@ -73,7 +82,22 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    {
+        var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"];
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        {
+            policy.WithOrigins(allowedOrigins
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+            return;
+        }
+
+        if (builder.Environment.IsDevelopment())
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        else
+            policy.SetIsOriginAllowed(_ => true).AllowAnyMethod().AllowAnyHeader();
+    });
 });
 
 builder.Services.Configure<TokenSettings>(builder.Configuration.GetSection("TokenSettings"));
@@ -96,8 +120,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+    var connectionString = RailwayHosting.ResolveConnectionString(builder.Configuration);
     options.UseMySQL(connectionString);
 });
 
@@ -175,14 +198,15 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || RailwayHosting.IsRailwayDeployment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.UseForwardedHeaders();
 app.UseCors("AllowFrontend");
-if (!app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment() && !RailwayHosting.IsRailwayDeployment())
     app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
