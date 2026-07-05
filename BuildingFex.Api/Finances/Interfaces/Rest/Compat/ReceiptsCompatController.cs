@@ -67,12 +67,15 @@ public class ReceiptsCompatController(
             return NotFound();
 
         string? status = body.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : null;
+        decimal? lateFee = body.TryGetProperty("lateFee", out var lateProp)
+            ? lateProp.GetDecimal()
+            : null;
         decimal? extraCharges = body.TryGetProperty("extraCharges", out var extraProp)
             ? extraProp.GetDecimal()
             : null;
         string? concept = body.TryGetProperty("concept", out var conceptProp) ? conceptProp.GetString() : null;
 
-        receipt.Patch(status, extraCharges, concept);
+        receipt.Patch(status, lateFee, extraCharges, concept);
         receiptRepository.Update(receipt);
         await unitOfWork.CompleteAsync(ct);
 

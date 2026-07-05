@@ -48,6 +48,12 @@ public class DashboardController(
                 amount = e.Amount,
                 purchaseDate = e.PurchaseDate,
             }),
+            monthlyChart = kpis.MonthlyChart.Select(m => new
+            {
+                monthKey = m.MonthKey,
+                income = m.Income,
+                expenses = m.Expenses,
+            }),
         });
     }
 }

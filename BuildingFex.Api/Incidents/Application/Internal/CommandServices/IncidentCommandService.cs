@@ -69,12 +69,19 @@ public class IncidentCommandService(
         if (string.IsNullOrWhiteSpace(command.Description))
             return Result<Incident>.Failure(IncidentError.DescriptionRequired, "La descripción es obligatoria.");
 
-        incident.Update(
-            command.Description,
-            command.Status,
-            command.Provider,
-            command.ResidentExternalId,
-            command.ResidentName);
+        try
+        {
+            incident.Update(
+                command.Description,
+                command.Status,
+                command.Provider,
+                command.ResidentExternalId,
+                command.ResidentName);
+        }
+        catch (ArgumentException ex)
+        {
+            return Result<Incident>.Failure(IncidentError.InvalidStatus, ex.Message);
+        }
 
         incidentRepository.Update(incident);
         await unitOfWork.CompleteAsync(cancellationToken);

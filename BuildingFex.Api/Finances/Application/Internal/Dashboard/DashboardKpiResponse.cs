@@ -13,6 +13,11 @@ public record AdminExpenseSummaryDto(
     decimal Amount,
     string PurchaseDate);
 
+public record MonthlyChartPointDto(
+    string MonthKey,
+    decimal Income,
+    decimal Expenses);
+
 public record DashboardKpiResponse(
     decimal TotalCollectedThisMonth,
     decimal TotalPendingDebt,
@@ -22,4 +27,5 @@ public record DashboardKpiResponse(
     decimal TotalDebt,
     IEnumerable<RecentPaymentDto> RecentPayments,
     decimal TotalAdminExpenses,
-    IEnumerable<AdminExpenseSummaryDto> AdminExpenses);
+    IEnumerable<AdminExpenseSummaryDto> AdminExpenses,
+    IReadOnlyList<MonthlyChartPointDto> MonthlyChart);

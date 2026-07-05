@@ -23,19 +23,8 @@ public class IncidentQueryService(
             if (owner is null) return [];
             incidents = await incidentRepository.ListByOwnerAdminIdAsync(owner.Id, cancellationToken);
         }
-        incidents = incidents.Where(i => i.Status == "open");
-
-        // 🔹 Ejemplo de mejora: ordenar por fecha de reporte
         incidents = incidents.OrderByDescending(i => i.ReportedAt);
 
         return incidents;
-            
-
-       
-
-        
     }
-
-    
-
 }

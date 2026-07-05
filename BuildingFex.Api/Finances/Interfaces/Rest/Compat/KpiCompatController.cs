@@ -1,4 +1,5 @@
 using BuildingFex.Api.Finances.Application.Internal;
+using BuildingFex.Api.Finances.Application.Internal.Dashboard;
 using BuildingFex.Api.Finances.Domain.Model.Aggregates;
 using BuildingFex.Api.Finances.Domain.Repositories;
 using BuildingFex.Api.Finances.Interfaces.Rest.Transform;
@@ -12,14 +13,39 @@ namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 [Route("kpi")]
 public class KpiCompatController(
     IKpiRepository kpiRepository,
+    IDashboardQueryService dashboardQueryService,
     FinanceOwnerResolver ownerResolver,
     IUnitOfWork unitOfWork) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? ownerAdminId, CancellationToken ct)
     {
-        var records = await kpiRepository.ListAsync(ownerAdminId, ct);
-        return Ok(records.Select(FinanceCompatSerializer.KpiToJson));
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(ownerAdminId, ct);
+        if (owner is null)
+            return BadRequest(new { code = "OWNER_ADMIN_REQUIRED", message = "ownerAdminId es obligatorio." });
+
+        var kpis = await dashboardQueryService.GetKpisAsync(owner.Id, ct);
+
+        return Ok(new[]
+        {
+            new
+            {
+                id = $"kpi-{owner.ExternalId}",
+                ownerAdminId = owner.ExternalId,
+                totalResidents = kpis.TotalResidents,
+                occupiedUnits = kpis.OccupiedUnits,
+                emptyUnits = kpis.EmptyUnits,
+                totalDebt = kpis.TotalDebt,
+                totalCollectedThisMonth = kpis.TotalCollectedThisMonth,
+                totalPendingDebt = kpis.TotalPendingDebt,
+                monthlyChart = kpis.MonthlyChart.Select(m => new
+                {
+                    monthKey = m.MonthKey,
+                    income = m.Income,
+                    expenses = m.Expenses,
+                }),
+            },
+        });
     }
 
     [HttpPost]

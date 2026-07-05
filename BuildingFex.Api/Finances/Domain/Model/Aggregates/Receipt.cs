@@ -49,10 +49,12 @@ public class Receipt : IAuditableEntity, IOwnerScopedFinanceEntity
         };
     }
 
-    public void Patch(string? status, decimal? extraCharges, string? concept)
+    public void Patch(string? status, decimal? lateFee, decimal? extraCharges, string? concept)
     {
         if (!string.IsNullOrWhiteSpace(status))
             Status = status;
+        if (lateFee.HasValue)
+            LateFee = lateFee.Value;
         if (extraCharges.HasValue)
             ExtraCharges = extraCharges.Value;
         if (concept is not null)
