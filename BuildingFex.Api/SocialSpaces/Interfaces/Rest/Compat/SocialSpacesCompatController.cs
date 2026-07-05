@@ -3,6 +3,7 @@ using BuildingFex.Api.SocialSpaces.Domain.Model.Aggregates;
 using BuildingFex.Api.SocialSpaces.Domain.Repositories;
 using BuildingFex.Api.SocialSpaces.Interfaces.Rest.Transform;
 using BuildingFex.Api.Shared.Domain.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -10,6 +11,7 @@ namespace BuildingFex.Api.SocialSpaces.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("socialSpaces")]
+[Authorize]
 public class SocialSpacesCompatController(
     ISocialSpaceRepository socialSpaceRepository,
     SocialSpacesOwnerResolver ownerResolver,

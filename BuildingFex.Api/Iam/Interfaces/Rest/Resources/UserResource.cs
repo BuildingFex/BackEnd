@@ -44,3 +44,5 @@ public record CreateUserCompatResource(
     string? Ruc = null);
 
 public record UpdateResidentCredentialsResource(string? Email, string? Password);
+
+public record SetResidentCredentialsByCodeResource(string Code, string Email, string Password);

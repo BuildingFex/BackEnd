@@ -4,6 +4,7 @@ using BuildingFex.Api.Finances.Domain.Model.Aggregates;
 using BuildingFex.Api.Finances.Domain.Repositories;
 using BuildingFex.Api.Finances.Interfaces.Rest.Transform;
 using BuildingFex.Api.Shared.Domain.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -11,6 +12,7 @@ namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("kpi")]
+[Authorize]
 public class KpiCompatController(
     IKpiRepository kpiRepository,
     IDashboardQueryService dashboardQueryService,

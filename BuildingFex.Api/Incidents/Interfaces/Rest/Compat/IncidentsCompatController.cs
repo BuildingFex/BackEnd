@@ -4,12 +4,14 @@ using BuildingFex.Api.Incidents.Domain.Model;
 using BuildingFex.Api.Incidents.Domain.Model.Commands;
 using BuildingFex.Api.Incidents.Interfaces.Rest.Resources;
 using BuildingFex.Api.Incidents.Interfaces.Rest.Transform;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BuildingFex.Api.Incidents.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("incidents")]
+[Authorize]
 public class IncidentsCompatController(
     IIncidentQueryService incidentQueryService,
     IIncidentCommandService incidentCommandService) : ControllerBase

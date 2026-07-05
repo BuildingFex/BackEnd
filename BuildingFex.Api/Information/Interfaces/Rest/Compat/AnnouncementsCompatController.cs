@@ -4,12 +4,14 @@ using BuildingFex.Api.Information.Domain.Model;
 using BuildingFex.Api.Information.Domain.Model.Commands;
 using BuildingFex.Api.Information.Interfaces.Rest.Resources;
 using BuildingFex.Api.Information.Interfaces.Rest.Transform;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BuildingFex.Api.Information.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("announcements")]
+[Authorize]
 public class AnnouncementsCompatController(
     IAnnouncementQueryService announcementQueryService,
     IAnnouncementCommandService announcementCommandService) : ControllerBase

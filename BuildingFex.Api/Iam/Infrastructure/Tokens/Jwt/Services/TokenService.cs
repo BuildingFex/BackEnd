@@ -24,8 +24,10 @@ public class TokenService(IOptions<TokenSettings> settings) : ITokenService
             new("name", user.Name),
         };
 
-        if (user.OwnerAdminId.HasValue)
-            claims.Add(new Claim("ownerAdminId", user.OwnerAdminId.Value.ToString()));
+        if (user.Role == "admin")
+            claims.Add(new Claim("ownerAdminId", user.ExternalId));
+        else if (user.OwnerAdmin is not null)
+            claims.Add(new Claim("ownerAdminId", user.OwnerAdmin.ExternalId));
 
         var token = new JwtSecurityToken(
             claims: claims,

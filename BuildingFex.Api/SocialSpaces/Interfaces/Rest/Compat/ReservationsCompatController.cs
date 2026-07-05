@@ -3,6 +3,7 @@ using BuildingFex.Api.SocialSpaces.Domain.Model.Aggregates;
 using BuildingFex.Api.SocialSpaces.Domain.Repositories;
 using BuildingFex.Api.SocialSpaces.Interfaces.Rest.Transform;
 using BuildingFex.Api.Shared.Domain.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -10,12 +11,14 @@ namespace BuildingFex.Api.SocialSpaces.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("reservations")]
+[Authorize]
 public class ReservationsCompatController(
     IReservationRepository reservationRepository,
     SocialSpacesOwnerResolver ownerResolver,
     IUnitOfWork unitOfWork) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? ownerAdminId,
         [FromQuery] string? spaceId,
@@ -24,6 +27,9 @@ public class ReservationsCompatController(
         [FromQuery] string? guestInviteToken,
         CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(guestInviteToken) && !(User.Identity?.IsAuthenticated ?? false))
+            return Unauthorized(new { code = "UNAUTHORIZED", message = "Autenticación requerida." });
+
         var reservations = await reservationRepository.ListAsync(
             ownerAdminId,
             spaceId,

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using BuildingFex.Api.Support.Domain.Model.Aggregates;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace BuildingFex.Api.Support.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("supportChats")]
+[Authorize]
 public class SupportChatsCompatController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]

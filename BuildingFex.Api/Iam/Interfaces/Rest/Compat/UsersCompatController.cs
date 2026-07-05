@@ -4,6 +4,7 @@ using BuildingFex.Api.Iam.Domain.Model;
 using BuildingFex.Api.Iam.Domain.Model.Commands;
 using BuildingFex.Api.Iam.Interfaces.Rest.Resources;
 using BuildingFex.Api.Iam.Interfaces.Rest.Transform;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BuildingFex.Api.Iam.Interfaces.Rest.Compat;
@@ -13,6 +14,7 @@ namespace BuildingFex.Api.Iam.Interfaces.Rest.Compat;
 /// </summary>
 [ApiController]
 [Route("users")]
+[Authorize]
 public class UsersCompatController(
     IUserQueryService userQueryService,
     IUserCommandService userCommandService) : ControllerBase

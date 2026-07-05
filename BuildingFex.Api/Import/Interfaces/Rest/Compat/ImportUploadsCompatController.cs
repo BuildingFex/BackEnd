@@ -1,5 +1,6 @@
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using BuildingFex.Api.Import.Domain.Model.Aggregates;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace BuildingFex.Api.Import.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("importUploads")]
+[Authorize]
 public class ImportUploadsCompatController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]

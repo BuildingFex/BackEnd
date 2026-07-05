@@ -1,5 +1,6 @@
 using BuildingFex.Api.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using BuildingFex.Api.Team.Domain.Model.Aggregates;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace BuildingFex.Api.Team.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("teamWorkers")]
+[Authorize]
 public class TeamWorkersCompatController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]

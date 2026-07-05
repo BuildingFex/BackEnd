@@ -1,6 +1,7 @@
 using BuildingFex.Api.Finances.Domain.Repositories;
 using BuildingFex.Api.Finances.Interfaces.Rest.Transform;
 using BuildingFex.Api.Shared.Domain.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -8,6 +9,7 @@ namespace BuildingFex.Api.Finances.Interfaces.Rest.Compat;
 
 [ApiController]
 [Route("fees")]
+[Authorize]
 public class FeesCompatController(
     IFeeRepository feeRepository,
     IUnitOfWork unitOfWork) : ControllerBase
