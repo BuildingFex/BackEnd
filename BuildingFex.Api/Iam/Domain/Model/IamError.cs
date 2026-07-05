@@ -11,4 +11,5 @@ public enum IamError
     ResidentCodeAlreadyExists,
     ResidentOwnerRequired,
     ResidentNotFound,
+    ResidentPlanLimitReached,
 }

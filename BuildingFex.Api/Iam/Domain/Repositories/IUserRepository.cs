@@ -20,4 +20,5 @@ public interface IUserRepository : IBaseRepository<User>
         string code,
         int? ownerAdminId = null,
         CancellationToken cancellationToken = default);
+    Task<int> CountResidentsByOwnerAdminIdAsync(int ownerAdminId, CancellationToken cancellationToken = default);
 }

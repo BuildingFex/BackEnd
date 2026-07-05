@@ -1,3 +1,4 @@
+using BuildingFex.Api.Iam.Domain.Model;
 using BuildingFex.Api.Iam.Domain.Model.Aggregates;
 using BuildingFex.Api.Iam.Interfaces.Rest.Resources;
 
@@ -21,5 +22,10 @@ public static class UserResourceAssembler
             user.AdmissionDate?.ToString("yyyy-MM-dd"),
             user.Role == "resident"
                 ? !string.IsNullOrEmpty(user.Email) && !string.IsNullOrEmpty(user.PasswordHash)
-                : null);
+                : null,
+            user.Role == "admin" ? SubscriptionPlans.Normalize(user.SubscriptionPlanId) : null,
+            user.Role == "admin" && user.SubscriptionPaidUntil.HasValue
+                ? user.SubscriptionPaidUntil.Value.ToString("o")
+                : null,
+            user.Role == "admin" ? SubscriptionPlans.MaxResidents(user.SubscriptionPlanId) : null);
 }

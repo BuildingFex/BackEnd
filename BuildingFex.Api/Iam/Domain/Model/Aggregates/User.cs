@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using BuildingFex.Api.Iam.Domain.Model;
 using BuildingFex.Api.Shared.Domain.Model.Entities;
 
 namespace BuildingFex.Api.Iam.Domain.Model.Aggregates;
@@ -37,6 +38,12 @@ public class User : IAuditableEntity
     public int? OwnerAdminId { get; private set; }
 
     public User? OwnerAdmin { get; private set; }
+
+    /// <summary>Subscription tier for admin accounts (free, essential, standard, scale).</summary>
+    public string SubscriptionPlanId { get; private set; } = SubscriptionPlanIds.Free;
+
+    /// <summary>When the current paid period ends (UTC). Null for free or legacy rows.</summary>
+    public DateTimeOffset? SubscriptionPaidUntil { get; private set; }
 
     public DateTimeOffset? CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
@@ -100,5 +107,14 @@ public class User : IAuditableEntity
 
         Email = email.Trim().ToLowerInvariant();
         PasswordHash = passwordHash;
+    }
+
+    public void UpdateSubscription(string planId, DateTimeOffset? paidUntil = null)
+    {
+        if (Role != "admin")
+            throw new InvalidOperationException("Only admin accounts have subscription plans.");
+
+        SubscriptionPlanId = SubscriptionPlans.Normalize(planId);
+        SubscriptionPaidUntil = SubscriptionPlans.IsPaid(SubscriptionPlanId) ? paidUntil : null;
     }
 }

@@ -2,6 +2,14 @@ namespace BuildingFex.Api.Finances.Application.Internal.MercadoPago;
 
 public record CreatePreferenceRequest(string ReceiptExternalId, string OwnerAdminExternalId);
 
+public record CreateSubscriptionPreferenceRequest(
+    string AdminExternalId,
+    string PlanId,
+    string? PayerEmail = null,
+    string? FrontendBaseUrl = null);
+
+public record SubscriptionActivationResult(bool Activated, string PlanId, string? PaidUntil);
+
 public record PreferenceResult(string PreferenceId, string? InitPoint);
 
 public record CardPaymentRequest(

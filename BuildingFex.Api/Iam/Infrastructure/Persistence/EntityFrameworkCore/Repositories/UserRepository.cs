@@ -94,4 +94,10 @@ public class UserRepository(AppDbContext context)
 
         return await query.AnyAsync(cancellationToken);
     }
+
+    public async Task<int> CountResidentsByOwnerAdminIdAsync(
+        int ownerAdminId,
+        CancellationToken cancellationToken = default)
+        => await Context.Set<User>()
+            .CountAsync(u => u.OwnerAdminId == ownerAdminId && u.Role == "resident", cancellationToken);
 }

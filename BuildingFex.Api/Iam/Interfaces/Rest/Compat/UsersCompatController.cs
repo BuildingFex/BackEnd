@@ -119,6 +119,7 @@ public class UsersCompatController(
             IamError.ResidentCodeAlreadyExists => "RESIDENT_CODE_ALREADY_EXISTS",
             IamError.ResidentOwnerRequired => "RESIDENT_OWNER_REQUIRED",
             IamError.ResidentNotFound => "RESIDENT_NOT_FOUND",
+            IamError.ResidentPlanLimitReached => "RESIDENT_PLAN_LIMIT_REACHED",
             IamError.EmailAlreadyExists => "EMAIL_ALREADY_EXISTS",
             _ => "USER_ERROR",
         };

@@ -89,6 +89,13 @@ public class UserCommandService(
                 IamError.ResidentCodeAlreadyExists,
                 "Ya existe un residente con ese código.");
 
+        var residentCount = await userRepository.CountResidentsByOwnerAdminIdAsync(owner.Id, cancellationToken);
+        var planLimit = SubscriptionPlans.MaxResidents(owner.SubscriptionPlanId);
+        if (residentCount >= planLimit)
+            return Result<User>.Failure(
+                IamError.ResidentPlanLimitReached,
+                $"Límite del plan alcanzado (máximo {planLimit} residentes). Cambia tu plan en Ajustes.");
+
         DateOnly? admissionDate = null;
         if (!string.IsNullOrWhiteSpace(command.AdmissionDate) &&
             DateOnly.TryParse(command.AdmissionDate, out var parsed))

@@ -13,7 +13,10 @@ public record UserResource(
     string? Company,
     string? Ruc,
     string? AdmissionDate,
-    bool? HasCredentials = null);
+    bool? HasCredentials = null,
+    string? SubscriptionPlanId = null,
+    string? SubscriptionPaidUntil = null,
+    int? ResidentLimit = null);
 
 public record AuthenticatedUserResource(UserResource User, string Token);
 
@@ -46,3 +49,17 @@ public record CreateUserCompatResource(
 public record UpdateResidentCredentialsResource(string? Email, string? Password);
 
 public record SetResidentCredentialsByCodeResource(string Code, string Email, string Password);
+
+public record SubscriptionResponseResource(
+    string PlanId,
+    int ResidentLimit,
+    int ResidentsCount,
+    decimal MonthlyPricePen,
+    string? PaidUntil,
+    bool IsPaid);
+
+public record ChangeSubscriptionPlanResource(string PlanId);
+
+public record SubscriptionCheckoutResource(string PlanId);
+
+public record ConfirmSubscriptionResource(string PlanId, long? PaymentId, bool Demo = false);
