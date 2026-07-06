@@ -174,7 +174,10 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.Migrate();
+    
+    // Usamos EnsureCreated en vez de Migrate para evitar el bug de GET_LOCK(-1) 
+    // que ocurre al usar XAMPP (MariaDB) con el proveedor de Oracle MySQL.
+    context.Database.EnsureCreated();
 
     var seedPath = builder.Configuration["Seed:DbJsonPath"];
     if (!string.IsNullOrWhiteSpace(seedPath))
