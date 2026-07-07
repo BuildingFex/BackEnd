@@ -44,6 +44,9 @@ public class MercadoPagoService(
     public async Task<PreferenceResult> CreatePreferenceAsync(
         CreatePreferenceRequest request, CancellationToken ct = default)
     {
+        if (!IsMercadoPagoConfigured())
+            throw new InvalidOperationException("Mercado Pago no está configurado. Agrega AccessToken en appsettings.Local.json.");
+
         EnsureSdkConfigured();
 
         var receipt = await receiptRepository.FindByExternalIdAsync(request.ReceiptExternalId, ct)
@@ -197,16 +200,14 @@ public class MercadoPagoService(
     public async Task<CardPaymentResult> ProcessCardPaymentAsync(
         CardPaymentRequest request, CancellationToken ct = default)
     {
-        EnsureSdkConfigured();
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(request.OwnerAdminExternalId, ct)
+            ?? throw new InvalidOperationException("Valid ownerAdminId is required.");
 
         Receipt? receipt = null;
         if (!string.IsNullOrWhiteSpace(request.ReceiptExternalId))
         {
             receipt = await receiptRepository.FindByExternalIdAsync(request.ReceiptExternalId, ct);
         }
-
-        var owner = await ownerResolver.ResolveOwnerAdminAsync(request.OwnerAdminExternalId, ct)
-            ?? throw new InvalidOperationException("Valid ownerAdminId is required.");
 
         if (request.Token == "DEMO-TOKEN")
         {
@@ -230,6 +231,11 @@ public class MercadoPagoService(
                 DateApproved: DateTimeOffset.UtcNow.ToString("o"));
         }
 
+        if (!IsMercadoPagoConfigured())
+            throw new InvalidOperationException("Mercado Pago no está configurado. Agrega AccessToken en appsettings.Local.json.");
+
+        EnsureSdkConfigured();
+
         var paymentRequest = new PaymentCreateRequest
         {
             Token = request.Token,
@@ -238,7 +244,8 @@ public class MercadoPagoService(
             Installments = request.Installments,
             Payer = new PaymentPayerRequest { Email = request.PayerEmail },
             ExternalReference = receipt?.ExternalId ?? "GENERAL",
-            Description = receipt != null ? $"BuildingFex – Recibo {receipt.ExternalId}" : "BuildingFex – Pago General",
+            Description = receipt != null ? $"BuildingFex – Recibo {receipt.ExternalId}" : "BuildingFex – Pago de expensas",
+            StatementDescriptor = "BUILDINGFEX",
         };
 
         if (!string.IsNullOrWhiteSpace(request.IssuerId))

@@ -2,6 +2,7 @@ using System.Text.Json;
 using BuildingFex.Api.Finances.Application.Internal.MercadoPago;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BuildingFex.Api.Finances.Interfaces.Rest;
 
@@ -10,8 +11,26 @@ namespace BuildingFex.Api.Finances.Interfaces.Rest;
 [Tags("Mercado Pago")]
 public class MercadoPagoController(
     IMercadoPagoService mercadoPagoService,
+    IOptions<MercadoPagoSettings> mpSettings,
     ILogger<MercadoPagoController> logger) : ControllerBase
 {
+    private readonly MercadoPagoSettings _settings = mpSettings.Value;
+
+    [HttpGet("config")]
+    [AllowAnonymous]
+    public IActionResult GetConfig()
+    {
+        var configured = !string.IsNullOrWhiteSpace(_settings.AccessToken) &&
+                         !_settings.AccessToken.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+
+        return Ok(new
+        {
+            publicKey = string.IsNullOrWhiteSpace(_settings.PublicKey) ? null : _settings.PublicKey,
+            configured,
+            country = "PE",
+            currency = "PEN",
+        });
+    }
     [HttpPost("preference")]
     [Authorize]
     public async Task<IActionResult> CreatePreference(
@@ -40,6 +59,10 @@ public class MercadoPagoController(
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { code = "RECEIPT_NOT_FOUND", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { code = "MP_NOT_CONFIGURED", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -107,10 +130,15 @@ public class MercadoPagoController(
         {
             return NotFound(new { code = "RECEIPT_NOT_FOUND", message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { code = "MP_PAYMENT_FAILED", message = ex.Message });
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error processing card payment for receipt {ReceiptId}", receiptId);
-            return StatusCode(500, new { code = "MP_ERROR", message = "Could not process payment." });
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { code = "MP_ERROR", message = detail });
         }
     }
 
@@ -121,10 +149,12 @@ public class MercadoPagoController(
         logger.LogInformation("MercadoPago webhook received: {Body}", body.GetRawText());
 
         long mpPaymentId = 0;
+        string? dataId = null;
 
         if (body.TryGetProperty("data", out var dataProp) &&
             dataProp.TryGetProperty("id", out var dataIdProp))
         {
+            dataId = dataIdProp.ToString();
             mpPaymentId = dataIdProp.ValueKind == JsonValueKind.Number
                 ? dataIdProp.GetInt64()
                 : long.TryParse(dataIdProp.GetString(), out var parsed) ? parsed : 0;
@@ -133,6 +163,7 @@ public class MercadoPagoController(
                  body.TryGetProperty("topic", out var topicProp) &&
                  topicProp.GetString() == "payment")
         {
+            dataId = idProp.ToString();
             mpPaymentId = idProp.ValueKind == JsonValueKind.Number
                 ? idProp.GetInt64()
                 : long.TryParse(idProp.GetString(), out var parsed) ? parsed : 0;
@@ -143,12 +174,25 @@ public class MercadoPagoController(
             var qId = HttpContext.Request.Query["id"].FirstOrDefault();
             var qTopic = HttpContext.Request.Query["topic"].FirstOrDefault();
             if (qTopic == "payment" && long.TryParse(qId, out var qParsed))
+            {
                 mpPaymentId = qParsed;
+                dataId = qId;
+            }
         }
 
         if (mpPaymentId == 0)
         {
             return Ok(new { status = "ignored" });
+        }
+
+        var signature = Request.Headers["x-signature"].FirstOrDefault();
+        var requestId = Request.Headers["x-request-id"].FirstOrDefault();
+
+        if (!MercadoPagoWebhookValidator.TryValidateSignature(
+                signature, requestId, dataId, _settings.WebhookSecret, out var sigFailure))
+        {
+            logger.LogWarning("MercadoPago webhook signature rejected: {Reason}", sigFailure);
+            return Unauthorized(new { processed = false, status = sigFailure });
         }
 
         try

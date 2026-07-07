@@ -1,0 +1,9 @@
+{
+  "MercadoPago": {
+    "AccessToken": "APP_USR-your-access-token",
+    "PublicKey": "APP_USR-your-public-key",
+    "WebhookSecret": "your-webhook-secret",
+    "FrontendBaseUrl": "http://localhost:5173",
+    "NotificationUrl": "https://your-api-host/api/v1/payments/webhook"
+  }
+}

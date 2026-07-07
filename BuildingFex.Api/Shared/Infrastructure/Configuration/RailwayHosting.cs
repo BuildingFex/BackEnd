@@ -33,6 +33,26 @@ public static class RailwayHosting
 
         if (!string.IsNullOrWhiteSpace(secret))
             builder.Configuration["TokenSettings:Secret"] = secret;
+
+        var mpAccessToken = FirstEnv("MercadoPago__AccessToken", "MP_ACCESS_TOKEN");
+        if (!string.IsNullOrWhiteSpace(mpAccessToken))
+            builder.Configuration["MercadoPago:AccessToken"] = mpAccessToken;
+
+        var mpPublicKey = FirstEnv("MercadoPago__PublicKey", "MP_PUBLIC_KEY");
+        if (!string.IsNullOrWhiteSpace(mpPublicKey))
+            builder.Configuration["MercadoPago:PublicKey"] = mpPublicKey;
+
+        var mpWebhookSecret = FirstEnv("MercadoPago__WebhookSecret", "MP_WEBHOOK_SECRET");
+        if (!string.IsNullOrWhiteSpace(mpWebhookSecret))
+            builder.Configuration["MercadoPago:WebhookSecret"] = mpWebhookSecret;
+
+        var mpFrontendUrl = FirstEnv("MercadoPago__FrontendBaseUrl", "MP_FRONTEND_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(mpFrontendUrl))
+            builder.Configuration["MercadoPago:FrontendBaseUrl"] = mpFrontendUrl;
+
+        var mpNotificationUrl = FirstEnv("MercadoPago__NotificationUrl", "MP_NOTIFICATION_URL");
+        if (!string.IsNullOrWhiteSpace(mpNotificationUrl))
+            builder.Configuration["MercadoPago:NotificationUrl"] = mpNotificationUrl;
     }
 
     public static void ValidateProductionSecrets(IConfiguration configuration, IHostEnvironment environment)
