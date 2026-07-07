@@ -71,6 +71,105 @@ public class MercadoPagoController(
         }
     }
 
+    [HttpPost("checkout")]
+    [Authorize]
+    public async Task<IActionResult> CreateMaintenanceCheckout(
+        [FromBody] JsonElement body, CancellationToken ct)
+    {
+        if (!body.TryGetProperty("residentId", out var residentProp))
+            return BadRequest(new { code = "RESIDENT_ID_REQUIRED", message = "residentId is required." });
+
+        var residentId = residentProp.GetString() ?? string.Empty;
+        var ownerAdminId = body.TryGetProperty("ownerAdminId", out var ownerProp)
+            ? ownerProp.GetString() ?? string.Empty
+            : string.Empty;
+
+        var payerEmail = body.TryGetProperty("payerEmail", out var emailProp)
+            ? emailProp.GetString()
+            : null;
+
+        var frontendBaseUrl = body.TryGetProperty("frontendBaseUrl", out var frontendProp)
+            ? frontendProp.GetString()
+            : Request.Headers.Origin.FirstOrDefault();
+
+        try
+        {
+            var result = await mercadoPagoService.CreateMaintenanceCheckoutPreferenceAsync(
+                new CreateMaintenanceCheckoutRequest(
+                    residentId,
+                    ownerAdminId,
+                    payerEmail,
+                    frontendBaseUrl),
+                ct);
+
+            var demo = string.Equals(result.PreferenceId, "DEMO", StringComparison.OrdinalIgnoreCase);
+            return Ok(new
+            {
+                preferenceId = result.PreferenceId,
+                initPoint = result.InitPoint,
+                demo,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { code = "CHECKOUT_ERROR", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Maintenance checkout failed for resident {ResidentId}", residentId);
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { code = "CHECKOUT_ERROR", message = detail });
+        }
+    }
+
+    [HttpPost("confirm")]
+    [Authorize]
+    public async Task<IActionResult> ConfirmMaintenancePayment(
+        [FromBody] JsonElement body, CancellationToken ct)
+    {
+        if (!body.TryGetProperty("residentId", out var residentProp))
+            return BadRequest(new { code = "RESIDENT_ID_REQUIRED", message = "residentId is required." });
+
+        var residentId = residentProp.GetString() ?? string.Empty;
+        var ownerAdminId = body.TryGetProperty("ownerAdminId", out var ownerProp)
+            ? ownerProp.GetString() ?? string.Empty
+            : string.Empty;
+
+        long? paymentId = null;
+        if (body.TryGetProperty("paymentId", out var paymentProp))
+        {
+            if (paymentProp.ValueKind == JsonValueKind.Number)
+                paymentId = paymentProp.GetInt64();
+            else if (long.TryParse(paymentProp.GetString(), out var parsed))
+                paymentId = parsed;
+        }
+
+        var demo = body.TryGetProperty("demo", out var demoProp) && demoProp.GetBoolean();
+
+        try
+        {
+            var result = await mercadoPagoService.ConfirmMaintenancePaymentAsync(
+                new ConfirmMaintenancePaymentRequest(residentId, ownerAdminId, paymentId, demo),
+                ct);
+
+            return Ok(new
+            {
+                reconciled = result.Reconciled,
+                itemsPaid = result.ItemsPaid,
+                paidAt = result.PaidAt,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { code = "CONFIRM_FAILED", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Maintenance confirm failed for resident {ResidentId}", residentId);
+            return BadRequest(new { code = "CONFIRM_FAILED", message = ex.Message });
+        }
+    }
+
     [HttpPost("process")]
     [Authorize]
     public async Task<IActionResult> ProcessCardPayment(

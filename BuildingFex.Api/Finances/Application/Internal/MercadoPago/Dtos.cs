@@ -2,6 +2,20 @@ namespace BuildingFex.Api.Finances.Application.Internal.MercadoPago;
 
 public record CreatePreferenceRequest(string ReceiptExternalId, string OwnerAdminExternalId);
 
+public record CreateMaintenanceCheckoutRequest(
+    string ResidentExternalId,
+    string OwnerAdminExternalId,
+    string? PayerEmail = null,
+    string? FrontendBaseUrl = null);
+
+public record ConfirmMaintenancePaymentRequest(
+    string ResidentExternalId,
+    string OwnerAdminExternalId,
+    long? PaymentId,
+    bool AllowDemo = false);
+
+public record MaintenancePaymentResult(bool Reconciled, int ItemsPaid, string? PaidAt);
+
 public record CreateSubscriptionPreferenceRequest(
     string AdminExternalId,
     string PlanId,

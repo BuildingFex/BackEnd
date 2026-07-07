@@ -14,6 +14,7 @@ namespace BuildingFex.Api.Finances.Application.Internal.MercadoPago;
 public class MercadoPagoService(
     IOptions<MercadoPagoSettings> settings,
     IReceiptRepository receiptRepository,
+    IFeeRepository feeRepository,
     IPaymentRepository paymentRepository,
     IUserRepository userRepository,
     FinanceOwnerResolver ownerResolver,
@@ -25,6 +26,9 @@ public class MercadoPagoService(
 
     public static string BuildSubscriptionExternalReference(string adminExternalId, string planId) =>
         $"SUBSCRIPTION:{adminExternalId}:{SubscriptionPlans.Normalize(planId)}";
+
+    public static string BuildMaintenanceExternalReference(string residentExternalId, string ownerAdminExternalId) =>
+        $"MAINTENANCE:{residentExternalId}:{ownerAdminExternalId}";
 
     private void EnsureSdkConfigured()
     {
@@ -137,6 +141,125 @@ public class MercadoPagoService(
 
         return await CreatePreferenceSafeAsync(
             preferenceRequest, $"receipt {receipt.ExternalId}", ct);
+    }
+
+    public async Task<PreferenceResult> CreateMaintenanceCheckoutPreferenceAsync(
+        CreateMaintenanceCheckoutRequest request,
+        CancellationToken ct = default)
+    {
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(request.OwnerAdminExternalId, ct)
+            ?? throw new InvalidOperationException("Valid ownerAdminId is required.");
+
+        var pendingReceipts = (await receiptRepository.ListAsync(
+                request.OwnerAdminExternalId, request.ResidentExternalId, ct))
+            .Where(r => r.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var pendingFees = (await feeRepository.ListAsync(
+                request.OwnerAdminExternalId, request.ResidentExternalId, ct))
+            .Where(f => f.Status.Equals("Pendiente", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (pendingReceipts.Count == 0 && pendingFees.Count == 0)
+            throw new InvalidOperationException("No hay cuotas pendientes para pagar.");
+
+        var totalAmount = pendingReceipts.Sum(r => r.Amount + r.LateFee + r.ExtraCharges)
+            + pendingFees.Sum(f => f.Amount);
+
+        if (!IsMercadoPagoConfigured())
+        {
+            logger.LogWarning("MercadoPago not configured – maintenance checkout unavailable for demo.");
+            return new PreferenceResult("DEMO", null);
+        }
+
+        EnsureSdkConfigured();
+
+        var frontend = ResolveFrontendBaseForCheckout(request.FrontendBaseUrl);
+        if (!IsValidMercadoPagoUrl(frontend))
+        {
+            logger.LogWarning(
+                "No HTTPS frontend URL for maintenance checkout (got '{Frontend}').",
+                frontend);
+            return new PreferenceResult("DEMO", null);
+        }
+
+        var itemCount = pendingReceipts.Count + pendingFees.Count;
+        var externalRef = BuildMaintenanceExternalReference(
+            request.ResidentExternalId, request.OwnerAdminExternalId);
+
+        var preferenceRequest = new PreferenceRequest
+        {
+            Items =
+            [
+                new PreferenceItemRequest
+                {
+                    Title = "BuildingFex – Cuotas de mantenimiento",
+                    Description = $"{itemCount} cuota(s) pendiente(s)",
+                    Quantity = 1,
+                    CurrencyId = "PEN",
+                    UnitPrice = totalAmount,
+                }
+            ],
+            ExternalReference = externalRef,
+            Payer = string.IsNullOrWhiteSpace(request.PayerEmail)
+                ? null
+                : new PreferencePayerRequest { Email = request.PayerEmail },
+            BackUrls = BuildBackUrls(frontend, "/app/resident/finance?payment=success"),
+            AutoReturn = "approved",
+            NotificationUrl = ResolveNotificationUrl(),
+        };
+
+        return await CreatePreferenceSafeAsync(
+            preferenceRequest,
+            $"maintenance resident {request.ResidentExternalId} ({itemCount} items)",
+            ct);
+    }
+
+    public async Task<MaintenancePaymentResult> ConfirmMaintenancePaymentAsync(
+        ConfirmMaintenancePaymentRequest request,
+        CancellationToken ct = default)
+    {
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(request.OwnerAdminExternalId, ct)
+            ?? throw new InvalidOperationException("Valid ownerAdminId is required.");
+
+        var expectedRef = BuildMaintenanceExternalReference(
+            request.ResidentExternalId, request.OwnerAdminExternalId);
+
+        if (request.AllowDemo)
+        {
+            var demoItems = await ReconcileMaintenanceAsync(
+                request.ResidentExternalId,
+                request.OwnerAdminExternalId,
+                owner.Id,
+                $"DEMO-{Guid.NewGuid():N}",
+                DateTimeOffset.UtcNow.ToString("o"),
+                ct);
+            return new MaintenancePaymentResult(true, demoItems, DateTimeOffset.UtcNow.ToString("o"));
+        }
+
+        if (!request.PaymentId.HasValue || request.PaymentId.Value <= 0)
+            throw new InvalidOperationException("paymentId is required to confirm maintenance payment.");
+
+        EnsureSdkConfigured();
+
+        var client = new PaymentClient();
+        var mpPayment = await client.GetAsync(request.PaymentId.Value, cancellationToken: ct);
+
+        if (!string.Equals(mpPayment.Status, "approved", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Payment status is {mpPayment.Status ?? "unknown"}.");
+
+        if (!string.Equals(mpPayment.ExternalReference, expectedRef, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Payment does not match the resident maintenance checkout.");
+
+        var itemsPaid = await ReconcileMaintenanceAsync(
+            request.ResidentExternalId,
+            request.OwnerAdminExternalId,
+            owner.Id,
+            request.PaymentId.Value.ToString(),
+            mpPayment.DateApproved?.ToString("o") ?? DateTimeOffset.UtcNow.ToString("o"),
+            ct);
+
+        return new MaintenancePaymentResult(true, itemsPaid, mpPayment.DateApproved?.ToString("o"));
     }
 
     public async Task<PreferenceResult> CreateSubscriptionPreferenceAsync(
@@ -347,6 +470,9 @@ public class MercadoPagoService(
         if (externalRef.StartsWith("SUBSCRIPTION:", StringComparison.OrdinalIgnoreCase))
             return await HandleSubscriptionWebhookAsync(mpPayment, externalRef, ct);
 
+        if (externalRef.StartsWith("MAINTENANCE:", StringComparison.OrdinalIgnoreCase))
+            return await HandleMaintenanceWebhookAsync(mpPayment, externalRef, ct);
+
         if (string.IsNullOrWhiteSpace(externalRef))
         {
             logger.LogWarning("MercadoPago payment {MpId} has no external_reference.", mpPaymentId);
@@ -404,6 +530,115 @@ public class MercadoPagoService(
             planId, adminExternalId, mpPayment.Id);
 
         return new WebhookResult(true, "subscription_activated");
+    }
+
+    private async Task<WebhookResult> HandleMaintenanceWebhookAsync(
+        global::MercadoPago.Resource.Payment.Payment mpPayment,
+        string externalRef,
+        CancellationToken ct)
+    {
+        var parts = externalRef.Split(':', 3, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+            return new WebhookResult(false, "invalid_maintenance_reference");
+
+        var residentExternalId = parts[1];
+        var ownerAdminExternalId = parts[2];
+
+        var owner = await ownerResolver.ResolveOwnerAdminAsync(ownerAdminExternalId, ct);
+        if (owner is null)
+            return new WebhookResult(false, "owner_not_found");
+
+        var mpId = mpPayment.Id?.ToString() ?? string.Empty;
+        var bundleKey = $"MP-{mpId}-bundle";
+        if (await paymentRepository.FindByExternalIdAsync(bundleKey, ct) is not null)
+            return new WebhookResult(true, "already_processed");
+
+        var itemsPaid = await ReconcileMaintenanceAsync(
+            residentExternalId,
+            ownerAdminExternalId,
+            owner.Id,
+            mpId,
+            mpPayment.DateApproved?.ToString("o") ?? DateTimeOffset.UtcNow.ToString("o"),
+            ct);
+
+        logger.LogInformation(
+            "Webhook: reconciled maintenance MP {MpId} for resident {ResidentId} ({Count} items).",
+            mpPayment.Id, residentExternalId, itemsPaid);
+
+        return new WebhookResult(itemsPaid > 0, itemsPaid > 0 ? "approved" : "nothing_to_reconcile");
+    }
+
+    private async Task<int> ReconcileMaintenanceAsync(
+        string residentExternalId,
+        string ownerAdminExternalId,
+        int ownerAdminId,
+        string mpPaymentId,
+        string paidAt,
+        CancellationToken ct)
+    {
+        var pendingReceipts = (await receiptRepository.ListAsync(ownerAdminExternalId, residentExternalId, ct))
+            .Where(r => r.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var pendingFees = (await feeRepository.ListAsync(ownerAdminExternalId, residentExternalId, ct))
+            .Where(f => f.Status.Equals("Pendiente", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var itemsPaid = 0;
+
+        foreach (var receipt in pendingReceipts)
+        {
+            receipt.MarkAsPaid();
+            receiptRepository.Update(receipt);
+
+            var paymentExternalId = $"MP-{mpPaymentId}-R-{receipt.ExternalId}";
+            if (await paymentRepository.FindByExternalIdAsync(paymentExternalId, ct) is null)
+            {
+                var amount = receipt.Amount + receipt.LateFee + receipt.ExtraCharges;
+                await paymentRepository.AddAsync(
+                    Domain.Model.Aggregates.Payment.Create(
+                        paymentExternalId,
+                        ownerAdminId,
+                        residentExternalId,
+                        amount,
+                        feeExternalId: null,
+                        feeMonth: null,
+                        paidAt: paidAt,
+                        method: "Mercado Pago",
+                        reference: $"MP-{mpPaymentId}"),
+                    ct);
+            }
+            itemsPaid++;
+        }
+
+        foreach (var fee in pendingFees)
+        {
+            fee.UpdateStatus("Pagado");
+            feeRepository.Update(fee);
+
+            var paymentExternalId = $"MP-{mpPaymentId}-F-{fee.ExternalId}";
+            if (await paymentRepository.FindByExternalIdAsync(paymentExternalId, ct) is null)
+            {
+                await paymentRepository.AddAsync(
+                    Domain.Model.Aggregates.Payment.Create(
+                        paymentExternalId,
+                        ownerAdminId,
+                        residentExternalId,
+                        fee.Amount,
+                        feeExternalId: fee.ExternalId,
+                        feeMonth: fee.Month,
+                        paidAt: paidAt,
+                        method: "Mercado Pago",
+                        reference: $"MP-{mpPaymentId}"),
+                    ct);
+            }
+            itemsPaid++;
+        }
+
+        if (itemsPaid > 0)
+            await unitOfWork.CompleteAsync(ct);
+
+        return itemsPaid;
     }
 
     private async Task ActivateAdminSubscriptionAsync(
