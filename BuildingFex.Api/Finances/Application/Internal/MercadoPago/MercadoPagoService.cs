@@ -36,10 +36,67 @@ public class MercadoPagoService(
         !string.IsNullOrWhiteSpace(_settings.AccessToken) &&
         !_settings.AccessToken.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
 
-    private string FrontendBase(string? overrideUrl) =>
-        string.IsNullOrWhiteSpace(overrideUrl)
-            ? _settings.FrontendBaseUrl.TrimEnd('/')
-            : overrideUrl.TrimEnd('/');
+    private static bool IsValidMercadoPagoUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url.TrimEnd('/'), UriKind.Absolute, out var uri)) return false;
+        if (!uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)) return false;
+        if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return false;
+        if (uri.Host.Equals("127.0.0.1")) return false;
+        return true;
+    }
+
+    private string ResolveFrontendBaseForCheckout(string? requestOverride)
+    {
+        var fromRequest = string.IsNullOrWhiteSpace(requestOverride)
+            ? null
+            : requestOverride.TrimEnd('/');
+
+        if (fromRequest != null && IsValidMercadoPagoUrl(fromRequest))
+            return fromRequest;
+
+        var fromSettings = _settings.FrontendBaseUrl.TrimEnd('/');
+        if (IsValidMercadoPagoUrl(fromSettings))
+            return fromSettings;
+
+        return fromRequest ?? fromSettings;
+    }
+
+    private string? ResolveNotificationUrl()
+    {
+        var url = _settings.NotificationUrl?.Trim();
+        return IsValidMercadoPagoUrl(url) ? url : null;
+    }
+
+    private static PreferenceBackUrlsRequest BuildBackUrls(string frontendBase, string successPath)
+    {
+        var baseUrl = frontendBase.TrimEnd('/');
+        return new PreferenceBackUrlsRequest
+        {
+            Success = $"{baseUrl}{successPath}",
+            Failure = $"{baseUrl}{successPath.Replace("success", "failure", StringComparison.Ordinal)}",
+            Pending = $"{baseUrl}{successPath.Replace("success", "pending", StringComparison.Ordinal)}",
+        };
+    }
+
+    private async Task<PreferenceResult> CreatePreferenceSafeAsync(
+        PreferenceRequest request, string logContext, CancellationToken ct)
+    {
+        try
+        {
+            var client = new PreferenceClient();
+            var preference = await client.CreateAsync(request, cancellationToken: ct);
+            var initPoint = preference.InitPoint ?? preference.SandboxInitPoint;
+            logger.LogInformation("MercadoPago preference created: {PreferenceId} ({Context})", preference.Id, logContext);
+            return new PreferenceResult(preference.Id!, initPoint);
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            logger.LogError(ex, "MercadoPago preference failed ({Context}): {Detail}", logContext, detail);
+            throw new InvalidOperationException($"Mercado Pago rechazó la preferencia: {detail}", ex);
+        }
+    }
 
     public async Task<PreferenceResult> CreatePreferenceAsync(
         CreatePreferenceRequest request, CancellationToken ct = default)
@@ -53,7 +110,11 @@ public class MercadoPagoService(
             ?? throw new KeyNotFoundException($"Receipt '{request.ReceiptExternalId}' not found.");
 
         var totalAmount = receipt.Amount + receipt.LateFee + receipt.ExtraCharges;
-        var frontend = FrontendBase(null);
+        var frontend = ResolveFrontendBaseForCheckout(null);
+
+        if (!IsValidMercadoPagoUrl(frontend))
+            throw new InvalidOperationException(
+                "MercadoPago__FrontendBaseUrl debe ser HTTPS público (ej. https://tu-app.vercel.app). localhost no es válido.");
 
         var preferenceRequest = new PreferenceRequest
         {
@@ -69,26 +130,13 @@ public class MercadoPagoService(
                 }
             ],
             ExternalReference = receipt.ExternalId,
-            BackUrls = new PreferenceBackUrlsRequest
-            {
-                Success = $"{frontend}/app/resident/finance?payment=success",
-                Failure = $"{frontend}/app/resident/finance?payment=failure",
-                Pending = $"{frontend}/app/resident/finance?payment=pending",
-            },
+            BackUrls = BuildBackUrls(frontend, "/app/resident/finance?payment=success"),
             AutoReturn = "approved",
-            NotificationUrl = string.IsNullOrWhiteSpace(_settings.NotificationUrl)
-                ? null
-                : _settings.NotificationUrl,
+            NotificationUrl = ResolveNotificationUrl(),
         };
 
-        var client = new PreferenceClient();
-        var preference = await client.CreateAsync(preferenceRequest, cancellationToken: ct);
-
-        logger.LogInformation(
-            "MercadoPago preference created: {PreferenceId} for receipt {ReceiptId}, amount {Amount}",
-            preference.Id, receipt.ExternalId, totalAmount);
-
-        return new PreferenceResult(preference.Id!, preference.InitPoint);
+        return await CreatePreferenceSafeAsync(
+            preferenceRequest, $"receipt {receipt.ExternalId}", ct);
     }
 
     public async Task<PreferenceResult> CreateSubscriptionPreferenceAsync(
@@ -111,7 +159,16 @@ public class MercadoPagoService(
 
         EnsureSdkConfigured();
 
-        var frontend = FrontendBase(request.FrontendBaseUrl);
+        var frontend = ResolveFrontendBaseForCheckout(request.FrontendBaseUrl);
+        if (!IsValidMercadoPagoUrl(frontend))
+        {
+            logger.LogWarning(
+                "No HTTPS frontend URL for subscription checkout (got '{Frontend}'). " +
+                "Set MercadoPago__FrontendBaseUrl=https://tu-app.vercel.app in Railway.",
+                frontend);
+            return new PreferenceResult("DEMO", null);
+        }
+
         var externalRef = BuildSubscriptionExternalReference(admin.ExternalId, planId);
         var planLabel = char.ToUpper(planId[0]) + planId[1..];
 
@@ -132,26 +189,13 @@ public class MercadoPagoService(
             Payer = string.IsNullOrWhiteSpace(request.PayerEmail)
                 ? null
                 : new PreferencePayerRequest { Email = request.PayerEmail },
-            BackUrls = new PreferenceBackUrlsRequest
-            {
-                Success = $"{frontend}/app/settings?subscription=success&plan={planId}",
-                Failure = $"{frontend}/app/settings?subscription=failure&plan={planId}",
-                Pending = $"{frontend}/app/settings?subscription=pending&plan={planId}",
-            },
+            BackUrls = BuildBackUrls(frontend, $"/app/settings?subscription=success&plan={planId}"),
             AutoReturn = "approved",
-            NotificationUrl = string.IsNullOrWhiteSpace(_settings.NotificationUrl)
-                ? null
-                : _settings.NotificationUrl,
+            NotificationUrl = ResolveNotificationUrl(),
         };
 
-        var client = new PreferenceClient();
-        var preference = await client.CreateAsync(preferenceRequest, cancellationToken: ct);
-
-        logger.LogInformation(
-            "MercadoPago subscription preference {PreferenceId} for admin {AdminId} plan {PlanId}",
-            preference.Id, admin.ExternalId, planId);
-
-        return new PreferenceResult(preference.Id!, preference.InitPoint);
+        return await CreatePreferenceSafeAsync(
+            preferenceRequest, $"subscription admin {admin.ExternalId} plan {planId}", ct);
     }
 
     public async Task<SubscriptionActivationResult> ConfirmSubscriptionPaymentAsync(

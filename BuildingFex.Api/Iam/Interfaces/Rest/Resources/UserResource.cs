@@ -60,6 +60,6 @@ public record SubscriptionResponseResource(
 
 public record ChangeSubscriptionPlanResource(string PlanId);
 
-public record SubscriptionCheckoutResource(string PlanId);
+public record SubscriptionCheckoutResource(string PlanId, string? FrontendBaseUrl = null);
 
 public record ConfirmSubscriptionResource(string PlanId, long? PaymentId, bool Demo = false);

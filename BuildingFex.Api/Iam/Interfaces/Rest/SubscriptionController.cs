@@ -80,12 +80,19 @@ public class SubscriptionController(
 
         try
         {
+            var frontendBaseUrl = resource.FrontendBaseUrl;
+            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            {
+                frontendBaseUrl = Request.Headers.Origin.FirstOrDefault()
+                    ?? Request.Headers.Referer.FirstOrDefault();
+            }
+
             var result = await mercadoPagoService.CreateSubscriptionPreferenceAsync(
                 new CreateSubscriptionPreferenceRequest(
                     admin.ExternalId,
                     planId,
                     admin.Email,
-                    null),
+                    frontendBaseUrl),
                 ct);
 
             var demo = string.Equals(result.PreferenceId, "DEMO", StringComparison.OrdinalIgnoreCase);
@@ -98,10 +105,16 @@ public class SubscriptionController(
                 planId,
             });
         }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Subscription checkout rejected for admin {AdminId} plan {PlanId}", admin.ExternalId, planId);
+            return BadRequest(new { code = "CHECKOUT_ERROR", message = ex.Message });
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Subscription checkout failed for admin {AdminId} plan {PlanId}", admin.ExternalId, planId);
-            return StatusCode(500, new { code = "CHECKOUT_ERROR", message = "No se pudo iniciar el pago." });
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { code = "CHECKOUT_ERROR", message = detail });
         }
     }
 
