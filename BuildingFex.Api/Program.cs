@@ -191,8 +191,16 @@ using (var scope = app.Services.CreateScope())
         var incidentSeeder = scope.ServiceProvider.GetRequiredService<DbJsonIncidentSeeder>();
         await incidentSeeder.SeedAsync(seedPath);
 
-        var financeSeeder = scope.ServiceProvider.GetRequiredService<DbJsonFinanceSeeder>();
-        await financeSeeder.SeedAsync(seedPath);
+        var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            var financeSeeder = scope.ServiceProvider.GetRequiredService<DbJsonFinanceSeeder>();
+            await financeSeeder.SeedAsync(seedPath);
+        }
+        catch (Exception ex)
+        {
+            startupLogger.LogError(ex, "Finance seed failed — continuing startup.");
+        }
 
         var socialSpacesSeeder = scope.ServiceProvider.GetRequiredService<DbJsonSocialSpacesSeeder>();
         await socialSpacesSeeder.SeedAsync(seedPath);

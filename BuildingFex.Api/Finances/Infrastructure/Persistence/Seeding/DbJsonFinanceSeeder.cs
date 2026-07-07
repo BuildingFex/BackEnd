@@ -23,7 +23,10 @@ public class DbJsonFinanceSeeder(
 
     public async Task SeedAsync(string dbJsonPath, CancellationToken cancellationToken = default)
     {
-        if (await feeRepository.AnyAsync(cancellationToken))
+        if (await financeSettingRepository.AnyAsync(cancellationToken) ||
+            await feeRepository.AnyAsync(cancellationToken) ||
+            await receiptRepository.AnyAsync(cancellationToken) ||
+            await paymentRepository.AnyAsync(cancellationToken))
         {
             logger.LogInformation("Finances tables already seeded — skipping.");
             return;
