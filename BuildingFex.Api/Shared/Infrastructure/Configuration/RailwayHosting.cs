@@ -53,6 +53,13 @@ public static class RailwayHosting
         var mpNotificationUrl = FirstEnv("MercadoPago__NotificationUrl", "MP_NOTIFICATION_URL");
         if (!string.IsNullOrWhiteSpace(mpNotificationUrl))
             builder.Configuration["MercadoPago:NotificationUrl"] = mpNotificationUrl;
+
+        var connectionString = FirstEnv(
+            "ConnectionStrings__DefaultConnection",
+            "DATABASE_CONNECTION",
+            "MYSQL_CONNECTION");
+        if (!string.IsNullOrWhiteSpace(connectionString))
+            builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
     }
 
     public static void ValidateProductionSecrets(IConfiguration configuration, IHostEnvironment environment)
